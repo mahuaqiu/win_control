@@ -111,7 +111,7 @@ def test_audio_module():
     print(f"   当前音量: {current_volume}%")
 
     print("   测试设置音量到 40%...")
-    set_volume(40)
+    set_volume(50)
     new_volume = get_volume()
     print(f"   设置后: {new_volume}%")
 
