@@ -59,6 +59,7 @@ from winctrl.display import (
     get_supported_resolutions, # (monitor_id: Optional[str] = None) -> List[Resolution]
     set_resolution,         # (width: int, height: int, monitor_id: Optional[str] = None) -> None
     restore_resolution,     # (monitor_id: Optional[str] = None) -> None
+                            # monitor_id=None 时恢复主显示器分辨率
 )
 
 # 数据类型
