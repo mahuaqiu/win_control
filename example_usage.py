@@ -11,7 +11,7 @@ def test_display_module():
     print("Display 模块测试")
     print("=" * 50)
 
-    from winctrl.display import (
+    from win_control.display import (
         list_monitors,
         get_current_resolution,
         get_supported_resolutions,
@@ -72,7 +72,7 @@ def test_audio_module():
     print("Audio 模块测试")
     print("=" * 50)
 
-    from winctrl.audio import (
+    from win_control.audio import (
         list_devices,
         get_volume,
         set_volume,
@@ -146,7 +146,7 @@ def test_audio_module():
 
 def main():
     """主函数"""
-    print("WinCtrl Windows 系统控制模块示例")
+    print("WinControl Windows 系统控制模块示例")
     print("=" * 50)
 
     success = True

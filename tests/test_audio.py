@@ -1,7 +1,7 @@
 # Audio模块测试
 
 import pytest
-import winctrl.audio as audio
+import win_control.audio as audio
 
 
 class TestAudioExceptions:

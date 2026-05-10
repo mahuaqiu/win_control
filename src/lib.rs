@@ -7,7 +7,7 @@ mod audio;
 use error::WinCtrlError;
 
 #[pymodule]
-fn winctrl(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn win_control(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("WinCtrlError", py.get_type_bound::<WinCtrlError>())?;
 
     // Create and register display submodule
@@ -21,11 +21,11 @@ fn winctrl(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     audio::audio(&audio_module)?;
     m.add_submodule(&audio_module)?;
 
-    // Register submodules in sys.modules to support 'from winctrl.display import ...'
+    // Register submodules in sys.modules to support 'from win_control.display import ...'
     let sys = py.import_bound("sys")?;
     let modules = sys.getattr("modules")?;
-    modules.set_item("winctrl.display", &display_module)?;
-    modules.set_item("winctrl.audio", &audio_module)?;
+    modules.set_item("win_control.display", &display_module)?;
+    modules.set_item("win_control.audio", &audio_module)?;
 
     Ok(())
 }
