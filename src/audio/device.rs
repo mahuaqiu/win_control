@@ -32,15 +32,14 @@ impl DeviceDataFlow {
     }
 }
 
-/// 设备状态过滤参数转换为状态掩码
+/// 设备状态过滤参数转换为状态掩码（不包括 not_present）
 fn state_filter_to_mask(state_filter: &str) -> DEVICE_STATE {
     match state_filter.to_lowercase().as_str() {
         "active" => DEVICE_STATE_ACTIVE,
         "disabled" => DEVICE_STATE_DISABLED,
         "unplugged" => DEVICE_STATE_UNPLUGGED,
-        "notpresent" => DEVICE_STATE_NOTPRESENT,
-        "all" => DEVICE_STATE(0xF),  // 所有状态: active|disabled|unplugged|notpresent
-        _ => DEVICE_STATE(0xF),  // 默认显示所有设备
+        "all" => DEVICE_STATE(0x7),  // active|disabled|unplugged (不包括 not_present)
+        _ => DEVICE_STATE(0x7),  // 默认显示所有设备（不包括 not_present）
     }
 }
 
@@ -173,8 +172,11 @@ pub fn list_devices(_py: Python<'_>, device_type: String, state_filter: String) 
     list_devices_impl(&device_type, &state_filter).map_err(|e| AudioError::new_err(e.to_string()))
 }
 
-/// 获取设备状态的内部实现
-pub fn get_device_state_impl(device_id: String) -> Result<DeviceState, AudioErrorInner> {
+/// 获取设备状态的内部实现（支持设备名称或ID）
+pub fn get_device_state_impl(device_name_or_id: String) -> Result<DeviceState, AudioErrorInner> {
+    // 解析设备名称或ID
+    let device_id = resolve_device_id(&device_name_or_id)?;
+
     // 初始化 COM（使用 MTA 模式）
     unsafe {
         let hr = CoInitializeEx(None, COINIT_MULTITHREADED);
@@ -261,18 +263,38 @@ fn get_volume_and_mute(device: &windows::Win32::Media::Audio::IMMDevice) -> Resu
     }
 }
 
-/// 获取设备状态
+/// 获取设备状态（支持设备名称或ID）
 #[pyfunction]
-pub fn get_device_state(_py: Python<'_>, device_id: String) -> PyResult<DeviceState> {
-    get_device_state_impl(device_id).map_err(|e| AudioError::new_err(e.to_string()))
+pub fn get_device_state(_py: Python<'_>, device_name_or_id: String) -> PyResult<DeviceState> {
+    get_device_state_impl(device_name_or_id).map_err(|e| AudioError::new_err(e.to_string()))
 }
 
 // ============================================================
 // Task 15: 设备禁用/启用
 // ============================================================
 
-/// 禁用音频设备的内部实现
-pub fn disable_device_impl(device_id: String) -> Result<(), AudioErrorInner> {
+/// 根据设备名称或ID查找设备ID
+/// 如果传入的是设备名称，则自动查找对应的设备ID
+fn resolve_device_id(device_name_or_id: &str) -> Result<String, AudioErrorInner> {
+    // 先尝试按ID查找（如果字符串包含 {0.0.0. 开头，认为是ID）
+    if device_name_or_id.starts_with("{") || device_name_or_id.contains(".{") {
+        return Ok(device_name_or_id.to_string());
+    }
+
+    // 按名称查找设备ID
+    let devices = list_devices_impl("all", "all")?;
+    for d in devices {
+        if d.name == device_name_or_id {
+            return Ok(d.id);
+        }
+    }
+
+    Err(AudioErrorInner::DeviceNotFound(format!("未找到设备: {}", device_name_or_id)))
+}
+
+/// 禁用音频设备的内部实现（支持设备名称或ID）
+pub fn disable_device_impl(device_name_or_id: String) -> Result<(), AudioErrorInner> {
+    let device_id = resolve_device_id(&device_name_or_id)?;
     let policy = create_policy_config()
         .map_err(|e| AudioErrorInner::ComError(format!("无法创建 PolicyConfig: {}", e)))?;
     let wide: Vec<u16> = device_id.encode_utf16().chain(std::iter::once(0)).collect();
@@ -282,14 +304,15 @@ pub fn disable_device_impl(device_id: String) -> Result<(), AudioErrorInner> {
     Ok(())
 }
 
-/// 禁用音频设备
+/// 禁用音频设备（支持设备名称或ID）
 #[pyfunction]
-pub fn disable_device(_py: Python<'_>, device_id: String) -> PyResult<()> {
-    disable_device_impl(device_id).map_err(|e| AudioError::new_err(e.to_string()))
+pub fn disable_device(_py: Python<'_>, device_name_or_id: String) -> PyResult<()> {
+    disable_device_impl(device_name_or_id).map_err(|e| AudioError::new_err(e.to_string()))
 }
 
-/// 启用音频设备的内部实现
-pub fn enable_device_impl(device_id: String) -> Result<(), AudioErrorInner> {
+/// 启用音频设备的内部实现（支持设备名称或ID）
+pub fn enable_device_impl(device_name_or_id: String) -> Result<(), AudioErrorInner> {
+    let device_id = resolve_device_id(&device_name_or_id)?;
     let policy = create_policy_config()
         .map_err(|e| AudioErrorInner::ComError(format!("无法创建 PolicyConfig: {}", e)))?;
     let wide: Vec<u16> = device_id.encode_utf16().chain(std::iter::once(0)).collect();
@@ -299,10 +322,10 @@ pub fn enable_device_impl(device_id: String) -> Result<(), AudioErrorInner> {
     Ok(())
 }
 
-/// 启用音频设备
+/// 启用音频设备（支持设备名称或ID）
 #[pyfunction]
-pub fn enable_device(_py: Python<'_>, device_id: String) -> PyResult<()> {
-    enable_device_impl(device_id).map_err(|e| AudioError::new_err(e.to_string()))
+pub fn enable_device(_py: Python<'_>, device_name_or_id: String) -> PyResult<()> {
+    enable_device_impl(device_name_or_id).map_err(|e| AudioError::new_err(e.to_string()))
 }
 
 // ============================================================

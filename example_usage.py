@@ -110,20 +110,7 @@ def test_audio_module():
     except AudioError as e:
         print(f"   错误: {e}")
 
-    # 4. 音量控制（百分比 0-100）
-    print("\n4. 音量控制:")
-    current_volume = get_volume()
-    print(f"   当前音量: {current_volume}%")
 
-    print("   测试设置音量到 50%...")
-    set_volume(50)
-    new_volume = get_volume()
-    print(f"   设置后: {new_volume}%")
-
-    # 5. 静音控制
-    print("\n5. 静音状态:")
-    muted = get_mute()
-    print(f"   当前静音: {muted}")
 
     # 6. 设备状态详情
     print("\n6. 设备完整状态:")
@@ -144,16 +131,15 @@ def test_audio_module():
     disabled_devices = [d for d in all_speakers if d.state == "disabled"]
     if disabled_devices:
         print(f"   已停用的设备: {disabled_devices[0].name}")
-        print(f"   启用方法: enable_device('{disabled_devices[0].id}')")
+        print(f"   启用方法: enable_device('{disabled_devices[0].name}')")
     else:
         print("   当前没有停用的扬声器设备")
 
     # 显示停用设备的命令（不实际执行）
     if active_speakers:
-        print(f"   停用设备示例: disable_device('{active_speakers[0].id}')")
-        print(f"   启用设备示例: enable_device('{active_speakers[0].id}')")
+        print(f"   停用设备示例: disable_device('{active_speakers[0].name}')")
+        print(f"   启用设备示例: enable_device('{active_speakers[0].name}')")
         print("   (注意: 实际执行会停用/启用设备，需要管理员权限)")
-
     return True
 
 

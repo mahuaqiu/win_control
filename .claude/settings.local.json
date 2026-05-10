@@ -81,7 +81,11 @@
       "PowerShell(.venv\\\\Scripts\\\\activate; python example_usage.py 2>&1)",
       "PowerShell(.venv\\\\Scripts\\\\activate; python -c \"import winctrl.display as d; resolutions = d.get_supported_resolutions\\(\\); for r in resolutions: print\\(f'{r.width} x {r.height}'\\)\")",
       "PowerShell(.venv\\\\Scripts\\\\activate; python test_resolutions.py)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(.\\\\venv\\\\Scripts\\\\activate)",
+      "PowerShell(.\\\\venv\\\\Scripts\\\\Activate.ps1; python example_usage.py)",
+      "PowerShell(pip install *)",
+      "PowerShell(python example_usage.py)"
     ]
   }
 }
