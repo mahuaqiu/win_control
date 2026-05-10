@@ -229,8 +229,8 @@ fn is_default_device_impl_inner(enumerator: &IMMDeviceEnumerator, device_id: &st
     Ok(false)
 }
 
-/// 从设备获取音量和静音状态
-fn get_volume_and_mute(device: &windows::Win32::Media::Audio::IMMDevice) -> Result<(f32, bool), AudioErrorInner> {
+/// 从设备获取音量和静音状态（音量返回百分比 0-100）
+fn get_volume_and_mute(device: &windows::Win32::Media::Audio::IMMDevice) -> Result<(u32, bool), AudioErrorInner> {
     unsafe {
         let endpoint: IAudioEndpointVolume = device.Activate(CLSCTX_ALL, None)
             .map_err(|e| AudioErrorInner::VolumeError(format!("无法获取音频端点: {}", e)))?;
@@ -242,7 +242,8 @@ fn get_volume_and_mute(device: &windows::Win32::Media::Audio::IMMDevice) -> Resu
             .map_err(|e| AudioErrorInner::VolumeError(format!("无法获取静音状态: {}", e)))?
             .as_bool();
 
-        Ok((volume, is_muted))
+        // 将 0.0-1.0 转换为 0-100
+        Ok(((volume * 100.0).round() as u32, is_muted))
     }
 }
 

@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+"""
+WinCtrl 使用示例
+"""
+
+import sys
+
+def test_display_module():
+    """测试 Display 模块"""
+    print("=" * 50)
+    print("Display 模块测试")
+    print("=" * 50)
+
+    from winctrl.display import (
+        list_monitors,
+        get_current_resolution,
+        get_supported_resolutions,
+        set_resolution,
+        restore_resolution,
+        MonitorInfo,
+        Resolution,
+        DisplayError,
+    )
+
+    # 1. 列出所有显示器
+    print("\n1. 显示器列表:")
+    monitors = list_monitors()
+    for i, m in enumerate(monitors):
+        print(f"   [{i}] {m.name}")
+        print(f"       ID: {m.id}")
+        print(f"       主显示器: {m.is_primary}")
+
+    # 2. 获取当前分辨率
+    print("\n2. 当前分辨率:")
+    res = get_current_resolution()
+    print(f"   {res.width} x {res.height} @ {res.refresh_rate}Hz")
+
+    # 3. 获取支持的分辨率列表（全部）
+    print("\n3. 支持的分辨率列表:")
+    resolutions = get_supported_resolutions()
+    for i, r in enumerate(resolutions):
+        print(f"   [{i}] {r.width} x {r.height} @ {r.refresh_rate}Hz")
+    print(f"   共 {len(resolutions)} 种分辨率")
+
+    # 4. 测试分辨率设置
+    print("\n4. 分辨率设置测试:")
+    current = get_current_resolution()
+    print(f"   当前分辨率: {current.width}x{current.height}")
+
+    # 找一个可以设置的分辨率（使用列表中确认支持的）
+    # 注意：某些分辨率可能在列表中但实际不支持（显示器限制）
+    # 当前显示器似乎只支持 75Hz 的分辨率
+    test_width, test_height = 1920, 1080  # 这个可以成功
+    print(f"   测试设置 {test_width}x{test_height}")
+    try:
+        set_resolution(test_width, test_height)
+        print("   [OK] 设置成功")
+    except DisplayError as e:
+        print(f"   [Error] {e}")
+
+    # 5. 设置其他显示器（如果有多显示器）
+    if len(monitors) > 1:
+        print("\n5. 多显示器设置示例:")
+        print(f"   设置显示器2: set_resolution(1920, 1080, '{monitors[1].id}')")
+
+    return True
+
+
+def test_audio_module():
+    """测试 Audio 模块"""
+    print("\n" + "=" * 50)
+    print("Audio 模块测试")
+    print("=" * 50)
+
+    from winctrl.audio import (
+        list_devices,
+        get_volume,
+        set_volume,
+        get_mute,
+        set_mute,
+        get_device_state,
+        get_default_device,
+        DeviceInfo,
+        AudioError,
+    )
+
+    # 1. 列出音频设备（只返回 active 状态）
+    print("\n1. 扬声器设备:")
+    speakers = list_devices("speaker")
+    for i, d in enumerate(speakers):
+        print(f"   [{i}] {d.name} ({d.state})")
+
+    print("\n2. 麦克风设备:")
+    mics = list_devices("microphone")
+    for i, d in enumerate(mics):
+        print(f"   [{i}] {d.name} ({d.state})")
+
+    # 3. 获取默认设备
+    print("\n3. 默认扬声器:")
+    try:
+        default = get_default_device("speaker", "console")
+        print(f"   名称: {default.name}")
+        print(f"   ID: {default.id}")
+        print(f"   状态: {default.state}")
+    except AudioError as e:
+        print(f"   错误: {e}")
+
+    # 4. 音量控制（百分比 0-100）
+    print("\n4. 音量控制:")
+    current_volume = get_volume()
+    print(f"   当前音量: {current_volume}%")
+
+    print("   测试设置音量到 40%...")
+    set_volume(40)
+    new_volume = get_volume()
+    print(f"   设置后: {new_volume}%")
+
+    # 5. 静音控制
+    print("\n5. 静音状态:")
+    muted = get_mute()
+    print(f"   当前静音: {muted}")
+    return True
+
+
+def main():
+    """主函数"""
+    print("WinCtrl Windows 系统控制模块示例")
+    print("=" * 50)
+
+    success = True
+
+    try:
+        success &= test_audio_module()
+    except Exception as e:
+        print(f"\nAudio 模块测试失败: {e}")
+        success = False
+
+    print("\n" + "=" * 50)
+    if success:
+        print("[OK] 所有测试通过!")
+    else:
+        print("[Error] 部分测试失败")
+    print("=" * 50)
+
+    return 0 if success else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

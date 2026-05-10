@@ -37,13 +37,13 @@ pub struct DeviceState {
     #[pyo3(get)]
     is_default: bool,
     #[pyo3(get)]
-    volume: f32,
+    volume: u32,  // 音量百分比 0-100
     #[pyo3(get)]
     is_muted: bool,
 }
 
 impl DeviceState {
-    pub fn new(state: String, is_default: bool, volume: f32, is_muted: bool) -> Self {
+    pub fn new(state: String, is_default: bool, volume: u32, is_muted: bool) -> Self {
         Self { state, is_default, volume, is_muted }
     }
 }

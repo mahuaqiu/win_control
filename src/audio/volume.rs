@@ -48,45 +48,49 @@ fn get_audio_endpoint(device_id: Option<&str>, data_flow: windows::Win32::Media:
     }
 }
 
-/// 获取音量的内部实现
-pub fn get_volume_impl(device_id: Option<String>) -> Result<f32, AudioErrorInner> {
+/// 获取音量的内部实现（返回百分比 0-100）
+pub fn get_volume_impl(device_id: Option<String>) -> Result<u32, AudioErrorInner> {
     let endpoint = get_audio_endpoint(device_id.as_deref(), eRender)?;
 
     unsafe {
         let volume = endpoint.GetMasterVolumeLevelScalar()
             .map_err(|e| AudioErrorInner::VolumeError(format!("无法获取音量: {}", e)))?;
-        Ok(volume)
+        // 将 0.0-1.0 转换为 0-100
+        Ok((volume * 100.0).round() as u32)
     }
 }
 
-/// 获取音量
+/// 获取音量（百分比形式，0-100）
 #[pyfunction]
 #[pyo3(signature = (device_id=None))]
-pub fn get_volume(_py: Python<'_>, device_id: Option<String>) -> PyResult<f32> {
+pub fn get_volume(_py: Python<'_>, device_id: Option<String>) -> PyResult<u32> {
     get_volume_impl(device_id).map_err(|e| AudioError::new_err(e.to_string()))
 }
 
-/// 设置音量的内部实现
-pub fn set_volume_impl(volume: f32, device_id: Option<String>) -> Result<(), AudioErrorInner> {
+/// 设置音量的内部实现（参数为百分比 0-100）
+pub fn set_volume_impl(volume: u32, device_id: Option<String>) -> Result<(), AudioErrorInner> {
     // 验证音量范围
-    if volume < 0.0 || volume > 1.0 {
-        return Err(AudioErrorInner::VolumeError("音量必须在0.0到1.0之间".to_string()));
+    if volume > 100 {
+        return Err(AudioErrorInner::VolumeError("音量必须在0到100之间".to_string()));
     }
 
     let endpoint = get_audio_endpoint(device_id.as_deref(), eRender)?;
 
+    // 将 0-100 转换为 0.0-1.0
+    let scalar_volume = volume as f32 / 100.0;
+
     unsafe {
-        endpoint.SetMasterVolumeLevelScalar(volume, std::ptr::null())
+        endpoint.SetMasterVolumeLevelScalar(scalar_volume, std::ptr::null())
             .map_err(|e| AudioErrorInner::VolumeError(format!("无法设置音量: {}", e)))?;
     }
 
     Ok(())
 }
 
-/// 设置音量
+/// 设置音量（百分比形式，0-100）
 #[pyfunction]
 #[pyo3(signature = (volume, device_id=None))]
-pub fn set_volume(_py: Python<'_>, volume: f32, device_id: Option<String>) -> PyResult<()> {
+pub fn set_volume(_py: Python<'_>, volume: u32, device_id: Option<String>) -> PyResult<()> {
     set_volume_impl(volume, device_id).map_err(|e| AudioError::new_err(e.to_string()))
 }
 
@@ -128,45 +132,49 @@ pub fn set_mute(_py: Python<'_>, mute: bool, device_id: Option<String>) -> PyRes
     set_mute_impl(mute, device_id).map_err(|e| AudioError::new_err(e.to_string()))
 }
 
-/// 获取输入设备音量的内部实现
-pub fn get_input_volume_impl(device_id: Option<String>) -> Result<f32, AudioErrorInner> {
+/// 获取输入设备音量的内部实现（返回百分比 0-100）
+pub fn get_input_volume_impl(device_id: Option<String>) -> Result<u32, AudioErrorInner> {
     let endpoint = get_audio_endpoint(device_id.as_deref(), eCapture)?;
 
     unsafe {
         let volume = endpoint.GetMasterVolumeLevelScalar()
             .map_err(|e| AudioErrorInner::VolumeError(format!("无法获取输入音量: {}", e)))?;
-        Ok(volume)
+        // 将 0.0-1.0 转换为 0-100
+        Ok((volume * 100.0).round() as u32)
     }
 }
 
-/// 获取输入设备音量
+/// 获取输入设备音量（百分比形式，0-100）
 #[pyfunction]
 #[pyo3(signature = (device_id=None))]
-pub fn get_input_volume(_py: Python<'_>, device_id: Option<String>) -> PyResult<f32> {
+pub fn get_input_volume(_py: Python<'_>, device_id: Option<String>) -> PyResult<u32> {
     get_input_volume_impl(device_id).map_err(|e| AudioError::new_err(e.to_string()))
 }
 
-/// 设置输入设备音量的内部实现
-pub fn set_input_volume_impl(volume: f32, device_id: Option<String>) -> Result<(), AudioErrorInner> {
+/// 设置输入设备音量的内部实现（参数为百分比 0-100）
+pub fn set_input_volume_impl(volume: u32, device_id: Option<String>) -> Result<(), AudioErrorInner> {
     // 验证音量范围
-    if volume < 0.0 || volume > 1.0 {
-        return Err(AudioErrorInner::VolumeError("音量必须在0.0到1.0之间".to_string()));
+    if volume > 100 {
+        return Err(AudioErrorInner::VolumeError("音量必须在0到100之间".to_string()));
     }
 
     let endpoint = get_audio_endpoint(device_id.as_deref(), eCapture)?;
 
+    // 将 0-100 转换为 0.0-1.0
+    let scalar_volume = volume as f32 / 100.0;
+
     unsafe {
-        endpoint.SetMasterVolumeLevelScalar(volume, std::ptr::null())
+        endpoint.SetMasterVolumeLevelScalar(scalar_volume, std::ptr::null())
             .map_err(|e| AudioErrorInner::VolumeError(format!("无法设置输入音量: {}", e)))?;
     }
 
     Ok(())
 }
 
-/// 设置输入设备音量
+/// 设置输入设备音量（百分比形式，0-100）
 #[pyfunction]
 #[pyo3(signature = (volume, device_id=None))]
-pub fn set_input_volume(_py: Python<'_>, volume: f32, device_id: Option<String>) -> PyResult<()> {
+pub fn set_input_volume(_py: Python<'_>, volume: u32, device_id: Option<String>) -> PyResult<()> {
     set_input_volume_impl(volume, device_id).map_err(|e| AudioError::new_err(e.to_string()))
 }
 
