@@ -20,6 +20,27 @@ use windows::Win32::Foundation::LUID;
 
 use super::DisplayErrorInner;
 
+/// 将简化的 monitor_index 参数转换为实际的 monitor_id
+/// - None 或 0: 主显示器
+/// - 1, 2, 3...: 对应索引的显示器
+fn resolve_monitor_id(monitor_index: Option<i32>) -> Result<Option<String>, DisplayErrorInner> {
+    match monitor_index {
+        None | Some(0) => Ok(None), // None 或 0 表示主显示器
+        Some(idx) if idx < 0 => {
+            Err(DisplayErrorInner::DeviceNotFound(format!("显示器索引不能为负数: {}", idx)))
+        }
+        Some(idx) => {
+            let monitors = list_monitors_impl()?;
+            let actual_idx = idx as usize;
+            if actual_idx >= monitors.len() {
+                Err(DisplayErrorInner::DeviceNotFound(format!("显示器索引超出范围: {} (共 {} 个显示器)", idx, monitors.len())))
+            } else {
+                Ok(Some(monitors[actual_idx].id.clone()))
+            }
+        }
+    }
+}
+
 // 线程本地存储，用于保存原始分辨率以便恢复
 thread_local! {
     static ORIGINAL_RESOLUTION: RefCell<Option<(String, Resolution)>> = RefCell::new(None);
@@ -35,11 +56,14 @@ pub struct MonitorInfo {
     name: String,
     #[pyo3(get)]
     is_primary: bool,
+    /// 在 list_monitors 中的索引位置（用于 set_resolution 等函数）
+    #[pyo3(get)]
+    index: u32,
 }
 
 impl MonitorInfo {
-    pub fn new(id: String, name: String, is_primary: bool) -> Self {
-        Self { id, name, is_primary }
+    pub fn new(id: String, name: String, is_primary: bool, index: u32) -> Self {
+        Self { id, name, is_primary, index }
     }
 }
 
@@ -65,6 +89,7 @@ impl Resolution {
 pub fn list_monitors_impl() -> Result<Vec<MonitorInfo>, DisplayErrorInner> {
     let mut monitors = Vec::new();
     let mut i: u32 = 0;
+    let mut list_index: u32 = 0;
 
     loop {
         let mut display_device = DISPLAY_DEVICEW {
@@ -99,7 +124,9 @@ pub fn list_monitors_impl() -> Result<Vec<MonitorInfo>, DisplayErrorInner> {
                 device_name,
                 friendly_name,
                 is_primary,
+                list_index,
             ));
+            list_index += 1;
         }
 
         i += 1;
@@ -150,9 +177,11 @@ pub fn get_current_resolution_impl(monitor_id: Option<String>) -> Result<Resolut
 }
 
 /// 获取当前分辨率
+/// monitor_index: None/0=主显示器, 1=第二个显示器, 2=第三个显示器...
 #[pyfunction]
-#[pyo3(signature = (monitor_id=None))]
-pub fn get_current_resolution(_py: Python<'_>, monitor_id: Option<String>) -> PyResult<Resolution> {
+#[pyo3(signature = (monitor_index=None))]
+pub fn get_current_resolution(_py: Python<'_>, monitor_index: Option<i32>) -> PyResult<Resolution> {
+    let monitor_id = resolve_monitor_id(monitor_index).map_err(|e| super::DisplayError::new_err(e.to_string()))?;
     get_current_resolution_impl(monitor_id).map_err(|e| super::DisplayError::new_err(e.to_string()))
 }
 
@@ -198,9 +227,11 @@ pub fn get_all_resolutions_impl(monitor_id: Option<String>) -> Result<Vec<Resolu
 }
 
 /// 获取所有分辨率模式（完整列表）
+/// monitor_index: None/0=主显示器, 1=第二个显示器, 2=第三个显示器...
 #[pyfunction]
-#[pyo3(signature = (monitor_id=None))]
-pub fn get_all_resolutions(_py: Python<'_>, monitor_id: Option<String>) -> PyResult<Vec<Resolution>> {
+#[pyo3(signature = (monitor_index=None))]
+pub fn get_all_resolutions(_py: Python<'_>, monitor_index: Option<i32>) -> PyResult<Vec<Resolution>> {
+    let monitor_id = resolve_monitor_id(monitor_index).map_err(|e| super::DisplayError::new_err(e.to_string()))?;
     get_all_resolutions_impl(monitor_id).map_err(|e| super::DisplayError::new_err(e.to_string()))
 }
 
@@ -233,9 +264,11 @@ pub fn get_supported_resolutions_impl(monitor_id: Option<String>) -> Result<Vec<
 }
 
 /// 获取支持的分辨率列表
+/// monitor_index: None/0=主显示器, 1=第二个显示器, 2=第三个显示器...
 #[pyfunction]
-#[pyo3(signature = (monitor_id=None))]
-pub fn get_supported_resolutions(_py: Python<'_>, monitor_id: Option<String>) -> PyResult<Vec<Resolution>> {
+#[pyo3(signature = (monitor_index=None))]
+pub fn get_supported_resolutions(_py: Python<'_>, monitor_index: Option<i32>) -> PyResult<Vec<Resolution>> {
+    let monitor_id = resolve_monitor_id(monitor_index).map_err(|e| super::DisplayError::new_err(e.to_string()))?;
     get_supported_resolutions_impl(monitor_id).map_err(|e| super::DisplayError::new_err(e.to_string()))
 }
 
@@ -400,17 +433,21 @@ pub fn set_resolution_impl(width: u32, height: u32, monitor_id: Option<String>) 
 }
 
 /// 设置分辨率（自动选择最佳刷新率）
+/// monitor_index: None/0=主显示器, 1=第二个显示器, 2=第三个显示器...
 #[pyfunction]
-#[pyo3(signature = (width, height, monitor_id=None))]
-pub fn set_resolution(_py: Python<'_>, width: u32, height: u32, monitor_id: Option<String>) -> PyResult<()> {
+#[pyo3(signature = (width, height, monitor_index=None))]
+pub fn set_resolution(_py: Python<'_>, width: u32, height: u32, monitor_index: Option<i32>) -> PyResult<()> {
+    let monitor_id = resolve_monitor_id(monitor_index).map_err(|e| super::DisplayError::new_err(e.to_string()))?;
     set_resolution_impl(width, height, monitor_id).map_err(|e| super::DisplayError::new_err(e.to_string()))
 }
 
 /// 设置分辨率（指定刷新率）- CCD API 不直接支持指定刷新率，此函数保留但使用 CCD
+/// monitor_index: None/0=主显示器, 1=第二个显示器, 2=第三个显示器...
 #[pyfunction]
-#[pyo3(signature = (width, height, refresh_rate, monitor_id=None))]
-pub fn set_resolution_with_refresh(_py: Python<'_>, width: u32, height: u32, refresh_rate: u32, monitor_id: Option<String>) -> PyResult<()> {
+#[pyo3(signature = (width, height, refresh_rate, monitor_index=None))]
+pub fn set_resolution_with_refresh(_py: Python<'_>, width: u32, height: u32, refresh_rate: u32, monitor_index: Option<i32>) -> PyResult<()> {
     // CCD API 的刷新率由 Target Mode 控制，这里简化处理
+    let monitor_id = resolve_monitor_id(monitor_index).map_err(|e| super::DisplayError::new_err(e.to_string()))?;
     set_resolution_ccd(width, height, monitor_id, false)
         .map_err(|e| super::DisplayError::new_err(e.to_string()))
 }
@@ -430,8 +467,10 @@ pub fn restore_resolution_impl(monitor_id: Option<String>) -> Result<(), Display
 }
 
 /// 恢复原始分辨率
+/// monitor_index: None/0=主显示器, 1=第二个显示器, 2=第三个显示器...
 #[pyfunction]
-#[pyo3(signature = (monitor_id=None))]
-pub fn restore_resolution(_py: Python<'_>, monitor_id: Option<String>) -> PyResult<()> {
+#[pyo3(signature = (monitor_index=None))]
+pub fn restore_resolution(_py: Python<'_>, monitor_index: Option<i32>) -> PyResult<()> {
+    let monitor_id = resolve_monitor_id(monitor_index).map_err(|e| super::DisplayError::new_err(e.to_string()))?;
     restore_resolution_impl(monitor_id).map_err(|e| super::DisplayError::new_err(e.to_string()))
 }

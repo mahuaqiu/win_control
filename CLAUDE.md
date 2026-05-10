@@ -47,11 +47,16 @@ src/
 ## API 模块
 
 ### win_control.display
-- `list_monitors()` → `MonitorInfo` 列表
-- `get_current_resolution(monitor_id=None)` → `Resolution`
-- `get_supported_resolutions(monitor_id=None)` → `Resolution` 列表
-- `set_resolution(width, height, monitor_id=None)` → 设置分辨率
-- `restore_resolution(monitor_id=None)` → 恢复原始分辨率
+- `list_monitors()` → `MonitorInfo` 列表（每个 MonitorInfo 包含 `index` 属性）
+- `get_current_resolution(monitor_index=None)` → `Resolution`
+- `get_supported_resolutions(monitor_index=None)` → `Resolution` 列表
+- `set_resolution(width, height, monitor_index=None)` → 设置分辨率
+- `restore_resolution(monitor_index=None)` → 恢复原始分辨率
+
+**monitor_index 参数说明：**
+- `None` 或 `0` = 主显示器
+- `1` = 第二个显示器（list_monitors 返回列表的索引 1）
+- `2` = 第三个显示器...
 
 ### win_control.audio
 - `list_devices(device_type="all", state_filter="all")` → `DeviceInfo` 列表

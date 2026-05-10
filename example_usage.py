@@ -25,15 +25,23 @@ def test_display_module():
     # 1. 列出所有显示器
     print("\n1. 显示器列表:")
     monitors = list_monitors()
-    for i, m in enumerate(monitors):
-        print(f"   [{i}] {m.name}")
+    for m in monitors:
+        print(f"   索引 {m.index}: {m.name}")
         print(f"       ID: {m.id}")
         print(f"       主显示器: {m.is_primary}")
 
-    # 2. 获取当前分辨率
+    # 2. 获取当前分辨率（使用简化参数）
     print("\n2. 当前分辨率:")
-    res = get_current_resolution()
-    print(f"   {res.width} x {res.height} @ {res.refresh_rate}Hz")
+    res = get_current_resolution()  # 默认主显示器
+    print(f"   主显示器: {res.width} x {res.height} @ {res.refresh_rate}Hz")
+
+    # 使用 monitor_index 参数
+    res0 = get_current_resolution(0)  # 0 也是主显示器
+    print(f"   monitor_index=0: {res0.width} x {res0.height} @ {res0.refresh_rate}Hz")
+
+    if len(monitors) > 1:
+        res1 = get_current_resolution(1)  # 第二个显示器
+        print(f"   monitor_index=1: {res1.width} x {res1.height} @ {res1.refresh_rate}Hz")
 
     # 3. 获取支持的分辨率列表（全部）
     print("\n3. 支持的分辨率列表:")
@@ -42,18 +50,15 @@ def test_display_module():
         print(f"   [{i}] {r.width} x {r.height} @ {r.refresh_rate}Hz")
     print(f"   共 {len(resolutions)} 种分辨率")
 
-    # 4. 测试分辨率设置
+    # 4. 测试分辨率设置（使用简化参数）
     print("\n4. 分辨率设置测试:")
     current = get_current_resolution()
     print(f"   当前分辨率: {current.width}x{current.height}")
 
-    # 找一个可以设置的分辨率（使用列表中确认支持的）
-    # 注意：某些分辨率可能在列表中但实际不支持（显示器限制）
-    # 当前显示器似乎只支持 75Hz 的分辨率
-    test_width, test_height = 1920, 1080  # 这个可以成功
+    test_width, test_height = 1920, 1080
     print(f"   测试设置 {test_width}x{test_height}")
     try:
-        set_resolution(test_width, test_height)
+        set_resolution(test_width, test_height)  # 使用默认主显示器
         print("   [OK] 设置成功")
     except DisplayError as e:
         print(f"   [Error] {e}")
@@ -61,7 +66,8 @@ def test_display_module():
     # 5. 设置其他显示器（如果有多显示器）
     if len(monitors) > 1:
         print("\n5. 多显示器设置示例:")
-        print(f"   设置显示器2: set_resolution(1920, 1080, '{monitors[1].id}')")
+        print(f"   设置副显示器: set_resolution(1920, 1080, monitor_index=1)")
+        print(f"   (monitor_index: 0=主显示器, 1=第二个显示器, ...)")
 
     return True
 
@@ -150,6 +156,12 @@ def main():
     print("=" * 50)
 
     success = True
+
+    try:
+        success &= test_display_module()
+    except Exception as e:
+        print(f"\nDisplay 模块测试失败: {e}")
+        success = False
 
     try:
         success &= test_audio_module()
