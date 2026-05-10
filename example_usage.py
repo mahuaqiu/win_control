@@ -80,19 +80,24 @@ def test_audio_module():
         set_mute,
         get_device_state,
         get_default_device,
+        disable_device,
+        enable_device,
         DeviceInfo,
         AudioError,
     )
 
-    # 1. 列出音频设备（只返回 active 状态）
-    print("\n1. 扬声器设备:")
-    speakers = list_devices("speaker")
-    for i, d in enumerate(speakers):
-        print(f"   [{i}] {d.name} ({d.state})")
+    # 1. 列出所有扬声器设备（包括停用的）
+    print("\n1. 扬声器设备（所有状态）:")
+    all_speakers = list_devices("speaker", "all")
+    for i, d in enumerate(all_speakers):
+        print(f"   [{i}] {d.name}")
+        print(f"       ID: {d.id}")
+        print(f"       状态: {d.state}")
 
-    print("\n2. 麦克风设备:")
-    mics = list_devices("microphone")
-    for i, d in enumerate(mics):
+    # 2. 只列出活跃的麦克风设备
+    print("\n2. 活跃麦克风设备:")
+    active_mics = list_devices("microphone", "active")
+    for i, d in enumerate(active_mics):
         print(f"   [{i}] {d.name} ({d.state})")
 
     # 3. 获取默认设备
@@ -110,7 +115,7 @@ def test_audio_module():
     current_volume = get_volume()
     print(f"   当前音量: {current_volume}%")
 
-    print("   测试设置音量到 40%...")
+    print("   测试设置音量到 50%...")
     set_volume(50)
     new_volume = get_volume()
     print(f"   设置后: {new_volume}%")
@@ -119,6 +124,36 @@ def test_audio_module():
     print("\n5. 静音状态:")
     muted = get_mute()
     print(f"   当前静音: {muted}")
+
+    # 6. 设备状态详情
+    print("\n6. 设备完整状态:")
+    active_speakers = [d for d in all_speakers if d.state == "active"]
+    if active_speakers:
+        try:
+            state = get_device_state(active_speakers[0].id)
+            print(f"   设备: {active_speakers[0].name}")
+            print(f"   状态: {state.state}")
+            print(f"   默认设备: {state.is_default}")
+            print(f"   音量: {state.volume}%")
+            print(f"   静音: {state.is_muted}")
+        except AudioError as e:
+            print(f"   获取状态失败: {e}")
+
+    # 7. 设备停用/启用示例（注释掉，避免实际停用设备）
+    print("\n7. 设备停用/启用示例:")
+    disabled_devices = [d for d in all_speakers if d.state == "disabled"]
+    if disabled_devices:
+        print(f"   已停用的设备: {disabled_devices[0].name}")
+        print(f"   启用方法: enable_device('{disabled_devices[0].id}')")
+    else:
+        print("   当前没有停用的扬声器设备")
+
+    # 显示停用设备的命令（不实际执行）
+    if active_speakers:
+        print(f"   停用设备示例: disable_device('{active_speakers[0].id}')")
+        print(f"   启用设备示例: enable_device('{active_speakers[0].id}')")
+        print("   (注意: 实际执行会停用/启用设备，需要管理员权限)")
+
     return True
 
 

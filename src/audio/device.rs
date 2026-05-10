@@ -32,9 +32,22 @@ impl DeviceDataFlow {
     }
 }
 
+/// 设备状态过滤参数转换为状态掩码
+fn state_filter_to_mask(state_filter: &str) -> DEVICE_STATE {
+    match state_filter.to_lowercase().as_str() {
+        "active" => DEVICE_STATE_ACTIVE,
+        "disabled" => DEVICE_STATE_DISABLED,
+        "unplugged" => DEVICE_STATE_UNPLUGGED,
+        "notpresent" => DEVICE_STATE_NOTPRESENT,
+        "all" => DEVICE_STATE(0xF),  // 所有状态: active|disabled|unplugged|notpresent
+        _ => DEVICE_STATE(0xF),  // 默认显示所有设备
+    }
+}
+
 /// 枚举音频设备的内部实现
-pub fn list_devices_impl(device_type: &str) -> Result<Vec<DeviceInfo>, AudioErrorInner> {
+pub fn list_devices_impl(device_type: &str, state_filter: &str) -> Result<Vec<DeviceInfo>, AudioErrorInner> {
     let data_flow = DeviceDataFlow::from_str(device_type);
+    let state_mask = state_filter_to_mask(state_filter);
 
     // 初始化 COM（使用 MTA 模式）
     unsafe {
@@ -60,9 +73,9 @@ pub fn list_devices_impl(device_type: &str) -> Result<Vec<DeviceInfo>, AudioErro
     };
 
     for flow in flows {
-        // 只获取 active 状态的设备（排除 not_present, disabled, unplugged）
+        // 根据状态过滤获取设备
         let collection = unsafe {
-            enumerator.EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE)
+            enumerator.EnumAudioEndpoints(flow, state_mask)
                 .map_err(|e| AudioErrorInner::EnumerationFailed(format!("无法枚举设备: {}", e)))?
         };
 
@@ -153,10 +166,11 @@ fn get_device_name(device: &windows::Win32::Media::Audio::IMMDevice) -> Result<S
 }
 
 /// 枚举所有音频设备
+/// state_filter: "all" | "active" | "disabled" | "unplugged" | "notpresent"
 #[pyfunction]
-#[pyo3(signature = (device_type="all".into()))]
-pub fn list_devices(_py: Python<'_>, device_type: String) -> PyResult<Vec<DeviceInfo>> {
-    list_devices_impl(&device_type).map_err(|e| AudioError::new_err(e.to_string()))
+#[pyo3(signature = (device_type="all".into(), state_filter="all".into()))]
+pub fn list_devices(_py: Python<'_>, device_type: String, state_filter: String) -> PyResult<Vec<DeviceInfo>> {
+    list_devices_impl(&device_type, &state_filter).map_err(|e| AudioError::new_err(e.to_string()))
 }
 
 /// 获取设备状态的内部实现
