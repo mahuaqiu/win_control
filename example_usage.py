@@ -112,12 +112,13 @@ def test_audio_module():
 
 
 
-    # 6. 设备状态详情
+    # 6. 设备状态详情（支持设备名称或ID）
     print("\n6. 设备完整状态:")
     active_speakers = [d for d in all_speakers if d.state == "active"]
     if active_speakers:
         try:
-            state = get_device_state(active_speakers[0].id)
+            # 可以直接用设备名称获取状态
+            state = get_device_state(active_speakers[0].name)
             print(f"   设备: {active_speakers[0].name}")
             print(f"   状态: {state.state}")
             print(f"   默认设备: {state.is_default}")
@@ -126,7 +127,7 @@ def test_audio_module():
         except AudioError as e:
             print(f"   获取状态失败: {e}")
 
-    # 7. 设备停用/启用示例（注释掉，避免实际停用设备）
+    # 7. 设备停用/启用示例
     print("\n7. 设备停用/启用示例:")
     disabled_devices = [d for d in all_speakers if d.state == "disabled"]
     if disabled_devices:
@@ -139,8 +140,7 @@ def test_audio_module():
     if active_speakers:
         print(f"   停用设备示例: disable_device('{active_speakers[0].name}')")
         print(f"   启用设备示例: enable_device('{active_speakers[0].name}')")
-        print("   (注意: 实际执行会停用/启用设备，需要管理员权限)")
-    disable_device('扬声器 (Realtek High Definition Audio)')
+        print("   (注意: 实际执行会停用/启用设备)")
     return True
 
 
