@@ -38,8 +38,8 @@ fn state_filter_to_mask(state_filter: &str) -> DEVICE_STATE {
         "active" => DEVICE_STATE_ACTIVE,
         "disabled" => DEVICE_STATE_DISABLED,
         "unplugged" => DEVICE_STATE_UNPLUGGED,
-        "all" => DEVICE_STATE(0x7),  // active|disabled|unplugged (不包括 not_present)
-        _ => DEVICE_STATE(0x7),  // 默认显示所有设备（不包括 not_present）
+        "all" => DEVICE_STATE(0xB),  // active|disabled|unplugged (0x1+0x2+0x8=0xB, 不包括 not_present=0x4)
+        _ => DEVICE_STATE(0xB),  // 默认显示所有设备（不包括 not_present）
     }
 }
 
@@ -281,11 +281,21 @@ fn resolve_device_id(device_name_or_id: &str) -> Result<String, AudioErrorInner>
         return Ok(device_name_or_id.to_string());
     }
 
-    // 按名称查找设备ID
+    // 按名称查找设备ID（使用包含匹配，更宽松）
     let devices = list_devices_impl("all", "all")?;
-    for d in devices {
+
+    // 先尝试精确匹配
+    for d in &devices {
         if d.name == device_name_or_id {
-            return Ok(d.id);
+            return Ok(d.id.clone());
+        }
+    }
+
+    // 再尝试包含匹配（名称包含输入字符串）
+    let trimmed = device_name_or_id.trim();
+    for d in &devices {
+        if d.name.contains(trimmed) || trimmed.contains(&d.name) {
+            return Ok(d.id.clone());
         }
     }
 

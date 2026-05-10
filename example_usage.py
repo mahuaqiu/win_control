@@ -140,6 +140,7 @@ def test_audio_module():
         print(f"   停用设备示例: disable_device('{active_speakers[0].name}')")
         print(f"   启用设备示例: enable_device('{active_speakers[0].name}')")
         print("   (注意: 实际执行会停用/启用设备，需要管理员权限)")
+    disable_device('扬声器 (Realtek High Definition Audio)')
     return True
 
 
