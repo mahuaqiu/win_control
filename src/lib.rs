@@ -17,7 +17,8 @@ fn winctrl(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_submodule(&display_module)?;
 
     // Create and register audio submodule
-    let audio_module = audio::create_module(py)?;
+    let audio_module = PyModule::new_bound(py, "audio")?;
+    audio::audio(&audio_module)?;
     m.add_submodule(&audio_module)?;
 
     // Register submodules in sys.modules to support 'from winctrl.display import ...'
