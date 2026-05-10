@@ -1,8 +1,10 @@
 use pyo3::prelude::*;
 
 mod error;
+mod monitor;
 
-pub use error::{DisplayError, MonitorNotFoundError, ResolutionNotSupportedError, DisplayPermissionError};
+pub use error::{DisplayError, DisplayErrorInner, MonitorNotFoundError, ResolutionNotSupportedError, DisplayPermissionError};
+pub use monitor::list_monitors_impl;
 
 /// 显示器信息
 #[pyclass]
@@ -40,8 +42,15 @@ impl Resolution {
     }
 }
 
-pub fn create_module(py: Python<'_>) -> PyResult<Bound<'_, PyModule>> {
-    let m = PyModule::new_bound(py, "display")?;
+/// 枚举所有显示器
+#[pyfunction]
+pub fn list_monitors() -> PyResult<Vec<MonitorInfo>> {
+    list_monitors_impl().map_err(|e: DisplayErrorInner| DisplayError::new_err(e.to_string()))
+}
+
+#[pymodule]
+pub fn display(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    let py = m.py();
 
     m.add("DisplayError", py.get_type_bound::<DisplayError>())?;
     m.add("MonitorNotFoundError", py.get_type_bound::<MonitorNotFoundError>())?;
@@ -51,5 +60,8 @@ pub fn create_module(py: Python<'_>) -> PyResult<Bound<'_, PyModule>> {
     m.add_class::<MonitorInfo>()?;
     m.add_class::<Resolution>()?;
 
-    Ok(m)
+    // 添加函数到模块
+    m.add_function(wrap_pyfunction!(list_monitors, m)?)?;
+
+    Ok(())
 }
